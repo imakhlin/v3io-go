@@ -1292,7 +1292,7 @@ func (c *context) getItemsParseJSONResponse(response *v3io.Response, getItemsInp
 	return &getItemsOutput, nil
 }
 
-func (c *context) getItemsParseCAPNPResponse(response *v3io.Response, withWildcard bool) (*v3io.GetItemsOutput, error) {
+func (c *context) getItemsParseCAPNPResponse(response *v3io.Response) (*v3io.GetItemsOutput, error) {
 	responseBodyReader := bytes.NewReader(response.Body())
 	capnpSections := readAllCapnpMessages(responseBodyReader)
 	if len(capnpSections) < 2 {
@@ -1375,7 +1375,10 @@ func (c *context) getItemsParseCAPNPResponse(response *v3io.Response, withWildca
 		itemPtr := items.At(itemIndex)
 		item, err := itemPtr.Item()
 		if err != nil {
-			return nil, errors.Wrap(err, "itemPtr.Item")
+		}
+		name, err := item.Name()
+		if err != nil {
+			return nil, errors.Wrap(err, "item.Name")
 		}
 		itemAttributes, err := item.Attrs()
 		if err != nil {

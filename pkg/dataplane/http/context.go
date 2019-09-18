@@ -317,7 +317,7 @@ func (c *context) GetItemsSync(getItemsInput *v3io.GetItemsInput) (*v3io.Respons
 		"PUT",
 		getItemsInput.Path,
 		"",
-		getItemsHeadersCapnp,
+		getItemsHeaders,
 		marshalledBody,
 		false)
 
@@ -325,25 +325,50 @@ func (c *context) GetItemsSync(getItemsInput *v3io.GetItemsInput) (*v3io.Respons
 		return nil, err
 	}
 
-	contentType := string(response.HeaderPeek("Content-Type"))
+	c.logger.DebugWithCtx(getItemsInput.Ctx, "Body", "body", string(response.Body()))
 
-	if contentType != "application/octet-capnp" {
-		c.logger.DebugWithCtx(getItemsInput.Ctx, "Body", "body", string(response.Body()))
-		response.Output, err = c.getItemsParseJSONResponse(response, getItemsInput)
-	} else {
-		var withWildcard bool
-		for _, attributeName := range getItemsInput.AttributeNames {
-			if attributeName == "*" || attributeName == "**" {
-				withWildcard = true
-				break
-			}
-		}
-		response.Output, err = c.getItemsParseCAPNPResponse(response, withWildcard)
+	getItemsResponse := struct {
+		Items []map[string]map[string]interface{}
+		NextMarker       string
+		LastItemIncluded string
+	}{}
+
+	// unmarshal the body into an ad hoc structure
+	err = json.Unmarshal(response.Body(), &getItemsResponse)
+	if err != nil {
+		return nil, err
 	}
-	return response, err
+
+	//validate getItems response to avoid infinite loop
+	if getItemsResponse.LastItemIncluded != "TRUE" && (getItemsResponse.NextMarker == "" || getItemsResponse.NextMarker == getItemsInput.Marker) {
+		errMsg := fmt.Sprintf("Invalid getItems response: lastItemIncluded=false and nextMarker='%s', "+
+			"startMarker='%s', probably due to object size bigger than 2M. Query is: %+v", getItemsResponse.NextMarker, getItemsInput.Marker, getItemsInput)
+		c.logger.Warn(errMsg)
+	}
+
+	getItemsOutput := v3io.GetItemsOutput{
+		NextMarker: getItemsResponse.NextMarker,
+		Last:       getItemsResponse.LastItemIncluded == "TRUE",
+	}
+
+	// iterate through the items and decode them
+	for _, typedItem := range getItemsResponse.Items {
+
+		item, err := c.decodeTypedAttributes(typedItem)
+		if err != nil {
+			return nil, err
+		}
+
+		getItemsOutput.Items = append(getItemsOutput.Items, item)
+	}
+
+	// attach the output to the response
+	response.Output = &getItemsOutput
+
+	return response, nil
 }
 
-// PutItem
+//// PutItem
 func (c *context) PutItem(putItemInput *v3io.PutItemInput,
 	context interface{},
 	responseChan chan *v3io.Response) (*v3io.Request, error) {

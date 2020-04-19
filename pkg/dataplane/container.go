@@ -18,10 +18,15 @@ package v3io
 
 // A container interface allows perform actions against a container
 type Container interface {
-
 	//
 	// Container
 	//
+
+	// GetContainers
+	GetClusterMD(*GetClusterMDInput, interface{}, chan *Response) (*Request, error)
+
+	// GetContainersSync
+	GetClusterMDSync(*GetClusterMDInput) (*Response, error)
 
 	// GetContainers
 	GetContainers(*GetContainersInput, interface{}, chan *Response) (*Request, error)
@@ -38,6 +43,11 @@ type Container interface {
 	//
 	// Object
 	//
+	// CheckPathExists
+	CheckPathExists(*CheckPathExistsInput, interface{}, chan *Response) (*Request, error)
+
+	// CheckPathExistsSync
+	CheckPathExistsSync(*CheckPathExistsInput) error
 
 	// GetObject
 	GetObject(*GetObjectInput, interface{}, chan *Response) (*Request, error)
@@ -83,7 +93,7 @@ type Container interface {
 	PutItem(*PutItemInput, interface{}, chan *Response) (*Request, error)
 
 	// PutItemSync
-	PutItemSync(*PutItemInput) error
+	PutItemSync(*PutItemInput) (*Response, error)
 
 	// PutItems
 	PutItems(*PutItemsInput, interface{}, chan *Response) (*Request, error)
@@ -95,7 +105,7 @@ type Container interface {
 	UpdateItem(*UpdateItemInput, interface{}, chan *Response) (*Request, error)
 
 	// UpdateItemSync
-	UpdateItemSync(*UpdateItemInput) error
+	UpdateItemSync(*UpdateItemInput) (*Response, error)
 
 	//
 	// Stream
@@ -106,6 +116,12 @@ type Container interface {
 
 	// CreateStreamSync
 	CreateStreamSync(*CreateStreamInput) error
+
+	// DescribeStream
+	DescribeStream(*DescribeStreamInput, interface{}, chan *Response) (*Request, error)
+
+	// DescribeStreamSync
+	DescribeStreamSync(*DescribeStreamInput) (*Response, error)
 
 	// DeleteStream
 	DeleteStream(*DeleteStreamInput, interface{}, chan *Response) (*Request, error)
